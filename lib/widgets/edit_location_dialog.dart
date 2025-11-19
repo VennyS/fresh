@@ -83,49 +83,71 @@ class EditLocationDialogState extends State<EditLocationDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(
-        widget.location == null
-            ? 'Добавить место хранения'
-            : 'Редактировать место',
-      ),
-      content: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextFormField(
-              controller: _nameController,
-              decoration: const InputDecoration(
-                labelText: 'Название места',
-                border: OutlineInputBorder(),
+    return Dialog(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 400, minWidth: 300),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                widget.location == null
+                    ? 'Добавить место хранения'
+                    : 'Редактировать место',
+                style: Theme.of(context).textTheme.headlineSmall,
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Пожалуйста, введите название';
-                }
-                return null;
-              },
-            ),
-          ],
+              const SizedBox(height: 16),
+              Form(
+                key: _formKey,
+                child: TextFormField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    labelText: 'Название места',
+                    border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 16,
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Пожалуйста, введите название';
+                    }
+                    return null;
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  if (widget.location != null)
+                    TextButton(
+                      onPressed: _deleteLocation,
+                      child: const Text(
+                        'Удалить',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  const Spacer(),
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Отмена'),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: _submit,
+                    child: Text(
+                      widget.location == null ? 'Добавить' : 'Сохранить',
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
-      actions: [
-        if (widget.location != null)
-          TextButton(
-            onPressed: _deleteLocation,
-            child: const Text('Удалить', style: TextStyle(color: Colors.red)),
-          ),
-        const Spacer(),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Отмена'),
-        ),
-        ElevatedButton(
-          onPressed: _submit,
-          child: Text(widget.location == null ? 'Добавить' : 'Сохранить'),
-        ),
-      ],
     );
   }
 }
