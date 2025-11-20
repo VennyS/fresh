@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:fresh/models/location.dart';
 import 'package:fresh/models/product.dart';
 import 'package:fresh/services/database_service.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
 
 class ProductProvider with ChangeNotifier {
   final DatabaseService _dbService = DatabaseService();
@@ -13,6 +17,72 @@ class ProductProvider with ChangeNotifier {
   List<Product> get filteredProducts =>
       List<Product>.unmodifiable(_filteredProducts);
   List<Location> get locations => List<Location>.unmodifiable(_locations);
+
+  final FlutterLocalNotificationsPlugin _notificationsPlugin =
+      FlutterLocalNotificationsPlugin();
+
+  ProductProvider() {
+    _initNotifications();
+  }
+
+  Future<void> _initNotifications() async {
+    tz.initializeTimeZones();
+
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
+    const settings = InitializationSettings(android: androidSettings);
+    await _notificationsPlugin.initialize(settings);
+
+    // Запрос разрешений для Android 13+
+    if (Platform.isAndroid) {
+      final androidPlugin = _notificationsPlugin
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >();
+      await androidPlugin?.requestNotificationsPermission();
+    }
+  }
+
+  Future<void> checkExpiringProducts() async {
+    final expiringProducts = await getExpiringSoonProducts();
+    final now = DateTime.now();
+
+    for (final product in expiringProducts) {
+      if (product.expirationDate == null) continue;
+
+      final expiration = DateTime.parse(product.expirationDate!);
+      final difference = expiration.difference(now).inDays;
+
+      String? title;
+      String? body;
+
+      if (difference < 0) {
+        title = 'Продукт просрочен';
+        body = '${product.name} просрочен!';
+      } else if (difference <= 3) {
+        title = 'Продукт скоро истечет';
+        body = '${product.name} истечет через $difference дня(дней)';
+      }
+
+      if (title != null && body != null) {
+        await _notificationsPlugin.show(
+          product.id,
+          title,
+          body,
+          const NotificationDetails(
+            android: AndroidNotificationDetails(
+              'product_channel',
+              'Product Notifications',
+              channelDescription: 'Notifications about expiring products',
+              importance: Importance.max,
+              priority: Priority.high,
+            ),
+          ),
+        );
+      }
+    }
+  }
 
   Future<void> loadData() async {
     final productsData = await _dbService.queryAllProducts();
